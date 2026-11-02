@@ -472,6 +472,43 @@ machine-readable Atlas page and should be reconfirmed before a paid batch.
 
 ---
 
+### Runpod Serverless — Talking / Singing Head
+
+> **Your own Runpod endpoint.** Runs the Hub worker `wlsdml1114/Infinitetalk_Runpod_hub` (listed release `skyreelsV3_v0.7_blackwell`, which is SkyReels-V3 audio-to-video in ComfyUI) on a scale-to-zero endpoint you deploy.
+
+**Tools unlocked:** `runpod_talking_head`
+**Env vars:** `RUNPOD_TALKING_HEAD_ENDPOINT`, plus either `RUNPOD_API_KEY` (REST) or the OAuth MCP runner at `RUNPOD_I2V_RUNNER` (default `~/Work/tools/runpod-i2v/runpod_i2v.py`, run through `uv`)
+
+#### Setup
+
+1. Deploy the Hub repo on the RTX 5090 pool (`gpuIds: ADA_32_PRO`, min workers 0). The release only has Blackwell kernels; on a 4090 it fails with `no kernel image is available for execution on the device`.
+2. Override the endpoint's start command (`args`) so the handler returns the final clip instead of the 81-frame silent stage-1 reference:
+   ```bash
+   bash -c "sed -i 's/for node_id in videos:/for node_id in sorted(videos, key=lambda n: int(n) != 131):/' /handler.py && exec /entrypoint.sh"
+   ```
+   Settings changes only reach new workers. If a warm worker still shows `isStale: true`, set max workers to 0 and back.
+3. Add to `.env`:
+   ```bash
+   RUNPOD_TALKING_HEAD_ENDPOINT=your-endpoint-id
+   RUNPOD_API_KEY=your-key-here   # optional when using the OAuth runner
+   ```
+
+#### What It Is Best For
+
+- Close-up and medium shots of a character speaking or singing, from one still
+- Song stems with backing music: the worker separates vocals (MelBandRoFormer) before syncing
+- Natural head, eye and expression motion, not just mouth movement
+
+#### Notes
+
+- Measured 2026-11-02: an 8.4 s clip at 832x464 took about 173 s on an RTX 5090 ($1.79/hr serverless), about $0.11, or roughly $1.40 per finished minute plus cold start.
+- Output size follows the image aspect with a long side of 832 unless `width`/`height` are given. Length follows the audio; use `audio_start`/`audio_duration` to slice a song.
+- The worker renders in ~81-frame windows and pads the last one with silence; the tool re-encodes the result down to the audio length (`trimmed_to_audio` in the result data).
+- The video comes back base64 in the job result, so keep single takes short (split long passages at breaths).
+- Registers under the `avatar` capability next to local `talking_head`; pipelines must opt in explicitly.
+
+---
+
 ### ElevenLabs — Voice, Music, Sound Effects
 
 > **Premium voice quality.** Best TTS for narration-heavy videos. Also generates music and sound effects.
@@ -1422,6 +1459,7 @@ These tools require only FFmpeg or Python packages — no GPU, no API key.
 | **fal.ai** | `FAL_KEY` | `flux_image`, `recraft_image`, `kling_video`, `veo_video`, `seedance_video`, `gemini_omni_fal`, `minimax_fal_video` | Pay-as-you-go |
 | **Atlas Cloud** | `ATLASCLOUD_API_KEY` | `atlas_image`, `atlas_video` | Pay-as-you-go |
 | **Kling Official** | `KLING_API_KEY` | `kling_official_video`, `kling_official_image`, `kling_tts`, `kling_avatar`, `kling_lip_sync` | Pay-as-you-go |
+| **Runpod Serverless** | `RUNPOD_TALKING_HEAD_ENDPOINT` + `RUNPOD_API_KEY` or OAuth runner | `runpod_talking_head` | Pay-per-second GPU |
 | **Volcengine Ark** | `ARK_API_KEY` | `seedance_ark` | Pay-as-you-go |
 | **MiniMax direct** | `MINIMAX_API_KEY` | `minimax_image`, `minimax_video` | Pay-as-you-go |
 | **OpenAI** | `OPENAI_API_KEY` | `openai_tts`, `openai_image` | Paid only |
