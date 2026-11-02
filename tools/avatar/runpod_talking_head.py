@@ -265,10 +265,23 @@ class RunpodTalkingHead(BaseTool):
         cmd += ["-i", str(audio_path), "-ac", "1", "-ar", "44100", "-b:a", "160k", str(audio_clip)]
         self.run_command(cmd, timeout=120)
 
+        # The worker crops/resizes to width x height anyway; sending a 2k PNG trips request-size
+        # limits (the MCP route returns 413), so send a cover-cropped JPEG at the output size.
+        image_clip = tmp / "image.jpg"
+        w, h = int(width), int(height)
+        self.run_command(
+            [
+                "ffmpeg", "-loglevel", "error", "-y", "-i", str(image_path), "-vf",
+                f"scale={w}:{h}:force_original_aspect_ratio=increase:flags=lanczos,crop={w}:{h}",
+                "-q:v", "2", str(image_clip),
+            ],
+            timeout=60,
+        )
+
         job_input: dict[str, Any] = {
             "input_type": "image",
             "person_count": "single",
-            "image_base64": base64.b64encode(image_path.read_bytes()).decode(),
+            "image_base64": base64.b64encode(image_clip.read_bytes()).decode(),
             "wav_base64": base64.b64encode(audio_clip.read_bytes()).decode(),
             "prompt": inputs.get("prompt") or "A person talking naturally",
             "width": int(width),

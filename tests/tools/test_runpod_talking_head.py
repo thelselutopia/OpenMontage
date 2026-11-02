@@ -137,6 +137,9 @@ def test_rest_transport_submits_and_decodes(monkeypatch, media, tmp_path):
     assert calls["input"]["prompt"] == "a woman singing"
     assert (calls["input"]["width"], calls["input"]["height"]) == (832, 464)
     assert "max_frame" not in calls["input"]
+    sent = base64.b64decode(calls["input"]["image_base64"])
+    assert sent[:2] == b"\xff\xd8"  # re-encoded as JPEG at the output size, not the source PNG
+    assert len(sent) < image.stat().st_size or len(sent) < 200_000
     assert out.read_bytes() == FAKE_MP4
     assert result.data["job_id"] == "job-1"
     assert result.data["transport"] == "rest"
