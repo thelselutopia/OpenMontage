@@ -135,3 +135,13 @@ When using the `talking_head` tool:
 6. **Crop mode is the safest default** — only use `resize` or `full` if crop produces bad framing
 7. **Preview a 5-second clip before generating the full video** — catch artifacts early
 8. **Fallback strategy:** if SadTalker is unavailable but Wav2Lip is, record a simple static video from the photo and lip-sync it with the `lip_sync` tool instead
+
+## Cloud Option: `runpod_talking_head`
+
+When `RUNPOD_TALKING_HEAD_ENDPOINT` is configured, `runpod_talking_head` (SkyReels-V3 audio-to-video on Runpod) is the higher-quality choice, and the only one that handles singing over a music bed:
+
+- Feed the **song mix directly**; the worker separates the vocal itself. Slice with `audio_start`/`audio_duration` instead of pre-cutting files.
+- Use **close-ups or medium shots**. In wide shots the face is too small to sync well.
+- Write `prompt` as the performance: "a woman singing softly into a vintage microphone, eyes half closed, gentle head movement".
+- Keep takes to **~20 s or less** and split at breaths. Check the cost estimate (~$0.11 per 8 s) before a batch.
+- Watch every take **with sound**, paying attention to pauses: the mouth should close on rests and reopen on the next line.
